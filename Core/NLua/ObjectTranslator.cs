@@ -580,7 +580,47 @@ namespace NLua
 			}
 
 			// Object already in the list of Lua objects? Push the stored reference.
-			bool found = objectsBackMap.TryGetValue (o, out index);
+#if LMP_ORIGINAL
+            bool found = objectsBackMap.TryGetValue(o, out index);
+#elif LMP_DEBUG1
+            int index2;
+            bool found2 = objectsBackMap.TryGetValue(o, out index2);
+            bool found = objectsBackMap.ContainsKey(o);
+            if (found) index = objectsBackMap[o];
+
+            if (found)
+            {
+                Debug.Print("\t... ObjectTranslator.PushObject: found but {0} vs {1} ", index, index2);  // LMP
+            }
+#else
+            // Assume its not in the cache, then try to access and throw exception
+            // Very inefficient but works around the problem we see with hcp.Equals() in TryGetValue
+            bool found = false;
+            index = -1;
+            try
+            {
+                index = objectsBackMap[o];
+                if (o == objects[index])
+                {
+                    found = true;
+                }
+
+            }
+            catch
+            {
+
+            }
+#endif
+
+#if LMP_DEBUG_PRINT
+            if ( found && o != objects[index]) 
+            {
+                Debug.Print("\tAlready found it @ index {0}, types DONT MATCH - overriding ", index);  // LMP
+
+                found = false;
+                index = -1;
+            }
+#endif
 
 			if (found) {
 				LuaLib.LuaLGetMetatable (luaState, "luaNet_objects");
